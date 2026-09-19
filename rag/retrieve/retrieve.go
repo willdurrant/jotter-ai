@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"math"
 	"sort"
-	"sync"
 
 	"github.com/willdurrant/jotter-ai/rag"
 	"github.com/willdurrant/jotter-ai/rag/store"
@@ -251,9 +250,7 @@ type BM25Retriever struct {
 	k1, b    float64
 	matchAll bool
 
-	once  sync.Once
-	stats store.Stats
-	err   error
+	stats *StatsCache
 }
 
 // NewBM25 uses the conventional parameters. Pass others to sweep them.
@@ -262,26 +259,19 @@ func NewBM25(src store.Lexicon) *BM25Retriever {
 }
 
 func NewBM25With(src store.Lexicon, k1, b float64) *BM25Retriever {
-	return &BM25Retriever{src: src, k1: k1, b: b}
+	return &BM25Retriever{src: src, k1: k1, b: b, stats: NewStatsCache(src, 0)}
+}
+
+// WithStatsCache shares a cache between retrievers, or supplies one with a TTL.
+// A sweep over k1 and b builds many retrievers over one unchanging index, and
+// they have no reason to scan it once each.
+func (r *BM25Retriever) WithStatsCache(c *StatsCache) *BM25Retriever {
+	r.stats = c
+	return r
 }
 
 func (r *BM25Retriever) Name() string {
 	return fmt.Sprintf("bm25(k1=%.2f,b=%.2f)", r.k1, r.b)
-}
-
-// loadStats fetches the corpus statistics once.
-//
-// Memoised with sync.Once, which is right for a bench process that indexes
-// once and then measures: the scan reads every lexeme of every row. It is
-// WRONG for a long-lived server, where a reingest leaves the statistics
-// describing a corpus that no longer exists, and where a single transient
-// failure is cached for the life of the process. Replacing it is a behaviour
-// change and belongs in its own commit, not in the move behind this interface.
-func (r *BM25Retriever) loadStats(ctx context.Context) (store.Stats, error) {
-	r.once.Do(func() {
-		r.stats, r.err = r.src.TermStats(ctx)
-	})
-	return r.stats, r.err
 }
 
 // Retrieve scores the SAME rows KeywordRetriever would match — the identical
@@ -289,7 +279,7 @@ func (r *BM25Retriever) loadStats(ctx context.Context) (store.Stats, error) {
 // is what makes the two comparable: any difference is IDF, saturation and
 // length normalisation, and nothing else.
 func (r *BM25Retriever) Retrieve(ctx context.Context, query string, k int) ([]Result, error) {
-	stats, err := r.loadStats(ctx)
+	stats, err := r.stats.Stats(ctx)
 	if err != nil {
 		return nil, err
 	}
