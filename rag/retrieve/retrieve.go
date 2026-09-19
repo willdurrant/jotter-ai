@@ -27,6 +27,10 @@ type Result struct {
 
 	VectorScore  float64
 	KeywordScore float64
+
+	// Meta is whatever the store attached to the row, passed through so a
+	// caller's own vocabulary survives retrieval.
+	Meta map[string]string
 }
 
 // Retriever finds the k chunks most relevant to a query.
@@ -74,6 +78,7 @@ func (r *VectorRetriever) Retrieve(ctx context.Context, query string, k int) ([]
 			ID:          d.ID,
 			Text:        d.Text,
 			Source:      d.Source,
+			Meta:        d.Meta,
 			Score:       d.Score,
 			VectorScore: d.Score,
 		})
@@ -124,7 +129,7 @@ func (r *KeywordRetriever) Retrieve(ctx context.Context, query string, k int) ([
 	var out []Result
 	for _, d := range rows {
 		out = append(out, Result{
-			ID: d.ID, Text: d.Text, Source: d.Source,
+			ID: d.ID, Text: d.Text, Source: d.Source, Meta: d.Meta,
 			Score: d.Score, KeywordScore: d.Score,
 		})
 	}
@@ -164,7 +169,7 @@ func (r *HybridRetriever) Retrieve(ctx context.Context, query string, k int) ([]
 	out := make([]Result, 0, len(cands))
 	for _, c := range cands {
 		out = append(out, Result{
-			ID: c.ID, Text: c.Text, Source: c.Source,
+			ID: c.ID, Text: c.Text, Source: c.Source, Meta: c.Meta,
 			VectorScore: c.VectorScore, KeywordScore: c.KeywordScore,
 		})
 	}
@@ -301,7 +306,7 @@ func (r *BM25Retriever) Retrieve(ctx context.Context, query string, k int) ([]Re
 	for _, d := range rows {
 		score := BM25Score(stats, d.ID, terms, r.k1, r.b)
 		out = append(out, Result{
-			ID: d.ID, Text: d.Text, Source: d.Source,
+			ID: d.ID, Text: d.Text, Source: d.Source, Meta: d.Meta,
 			Score: score, KeywordScore: score,
 		})
 	}

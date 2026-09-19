@@ -24,6 +24,11 @@ type Row struct {
 	ID     string
 	Text   string
 	Source string
+
+	// Meta is carried through untouched. Nothing in this module reads it — it
+	// exists so a consumer can attach what its own prompt needs (a note id, a
+	// board, a set of tags) without that vocabulary leaking into the seam.
+	Meta map[string]string
 }
 
 // Scored is a row with one score. What the number means depends on which call
