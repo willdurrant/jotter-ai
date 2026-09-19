@@ -70,19 +70,31 @@ type LLMRewriter struct {
 	name   string
 
 	mu    sync.Mutex
-	cache map[string]string
+	cache Cache
 }
+
+// Option configures a rewriter.
+type Option func(*LLMRewriter)
+
+// WithCache replaces the rewrite cache. The default is NewLRU(1024): bounded,
+// because an unbounded map keyed by user input is a leak in anything that runs
+// for longer than a test.
+func WithCache(c Cache) Option { return func(r *LLMRewriter) { r.cache = c } }
 
 // NewLLMRewriter builds a rewriter. Use StandaloneQueryPrompt to resolve a
 // follow-up against its history, VocabularyRewritePrompt to steer toward
 // document wording, or HyDEPrompt for hypothetical-document embedding.
-func NewLLMRewriter(name, prompt string, chat llm.Chatter) *LLMRewriter {
-	return &LLMRewriter{
+func NewLLMRewriter(name, prompt string, chat llm.Chatter, opts ...Option) *LLMRewriter {
+	r := &LLMRewriter{
 		chat:   chat,
 		prompt: prompt,
 		name:   name,
-		cache:  map[string]string{},
+		cache:  NewLRU(1024),
 	}
+	for _, apply := range opts {
+		apply(r)
+	}
+	return r
 }
 
 func (r *LLMRewriter) Name() string { return r.name }
@@ -91,7 +103,7 @@ func (r *LLMRewriter) Rewrite(ctx context.Context, history []Turn, question stri
 	key := cacheKey(history, question)
 
 	r.mu.Lock()
-	if cached, ok := r.cache[key]; ok {
+	if cached, ok := r.cache.Get(key); ok {
 		r.mu.Unlock()
 		return cached, nil
 	}
@@ -120,7 +132,7 @@ func (r *LLMRewriter) Rewrite(ctx context.Context, history []Turn, question stri
 	}
 
 	r.mu.Lock()
-	r.cache[key] = out
+	r.cache.Put(key, out)
 	r.mu.Unlock()
 	return out, nil
 }
