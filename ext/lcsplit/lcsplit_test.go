@@ -5,11 +5,10 @@ import (
 	"testing"
 
 	"github.com/willdurrant/jotter-ai/rag/chunk"
-	"github.com/willdurrant/jotter-ai/rag/corpus"
 )
 
 func TestChunkRespectsSize(t *testing.T) {
-	docs := []corpus.Document{{Source: "x.pdf", Text: strings.Repeat("word ", 2000)}}
+	docs := []chunk.Document{{Source: "x.pdf", Text: strings.Repeat("word ", 2000)}}
 
 	for _, size := range []int{100, 500, 1200} {
 		chunks, err := NewRecursive(size, 0).ChunkDocuments(docs)
@@ -25,7 +24,7 @@ func TestChunkRespectsSize(t *testing.T) {
 }
 
 func TestChunkOverlapProducesMoreChunks(t *testing.T) {
-	docs := []corpus.Document{{Source: "x.pdf", Text: strings.Repeat("alpha beta gamma delta ", 500)}}
+	docs := []chunk.Document{{Source: "x.pdf", Text: strings.Repeat("alpha beta gamma delta ", 500)}}
 
 	none, err := NewRecursive(200, 0).ChunkDocuments(docs)
 	if err != nil {
@@ -45,7 +44,7 @@ func TestChunkOverlapProducesMoreChunks(t *testing.T) {
 // TestTokenChunkerSizesInTokens shows the conceptual difference: the same
 // nominal size means a very different amount of text.
 func TestTokenChunkerSizesInTokens(t *testing.T) {
-	docs := []corpus.Document{{Source: "x.pdf", Text: strings.Repeat("alpha beta gamma delta ", 500)}}
+	docs := []chunk.Document{{Source: "x.pdf", Text: strings.Repeat("alpha beta gamma delta ", 500)}}
 
 	byChars, err := NewRecursive(200, 0).ChunkDocuments(docs)
 	if err != nil {
@@ -78,7 +77,7 @@ func avgLen(chunks []chunk.Chunk) float64 {
 }
 
 func TestChunkDocumentsCarriesSource(t *testing.T) {
-	docs := []corpus.Document{
+	docs := []chunk.Document{
 		{Source: "a.pdf", Text: strings.Repeat("alpha beta gamma ", 100)},
 		{Source: "b.pdf", Text: strings.Repeat("delta epsilon zeta ", 100)},
 	}

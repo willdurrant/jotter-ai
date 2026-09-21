@@ -62,7 +62,7 @@ func (l *Loader) LoadPages(_ context.Context) ([]string, error) {
 	return pages, nil
 }
 
-// Extractor adapts Loader to corpus.Extractor.
+// Extractor adapts Loader to a corpus loader's Extractor interface.
 //
 // It is the piece that carries the cgo dependency, so registering it is a
 // deliberate act by the caller rather than something LoadCorpus does for them.

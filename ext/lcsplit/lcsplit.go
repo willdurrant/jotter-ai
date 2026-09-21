@@ -8,7 +8,6 @@ import (
 	"github.com/tmc/langchaingo/textsplitter"
 
 	"github.com/willdurrant/jotter-ai/rag/chunk"
-	"github.com/willdurrant/jotter-ai/rag/corpus"
 )
 
 // SplitterChunker adapts any langchaingo TextSplitter to the Chunker interface.
@@ -19,7 +18,7 @@ type SplitterChunker struct {
 
 func (c *SplitterChunker) Name() string { return c.name }
 
-func (c *SplitterChunker) ChunkDocuments(docs []corpus.Document) ([]chunk.Chunk, error) {
+func (c *SplitterChunker) ChunkDocuments(docs []chunk.Document) ([]chunk.Chunk, error) {
 	var chunks []chunk.Chunk
 	for _, d := range docs {
 		parts, err := c.splitter.SplitText(d.Text)
