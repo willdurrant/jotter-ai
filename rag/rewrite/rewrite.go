@@ -57,9 +57,37 @@ const (
 
 If the latest message is already a clear standalone query, return it unchanged.`
 
-	VocabularyRewritePrompt = `Rewrite the user's question using the formal terminology a policy or contract document would use, so it matches the document's own wording rather than everyday phrasing. Keep it short. Return ONLY the rewritten query, nothing else.`
+	// VocabularyRewritePrompt steers the query towards the register documents are
+	// written in, without naming a kind of document.
+	//
+	// It used to say "a policy or contract document", which was a corpus
+	// assumption masquerading as a prompt. Measured on a corpus of recipes and
+	// insurance PDFs, the model took the instruction literally and refused: "I
+	// don't have access to any policy or contract document to reference for
+	// formal terminology related to mulligatawny soup equipment." A refusal is
+	// then embedded as though it were a query, and retrieval fails.
+	VocabularyRewritePrompt = `Rewrite the user's question using the terminology the source document would be likely to use, rather than everyday phrasing. Keep it short.
 
-	HyDEPrompt = `Write a short passage (2-3 sentences) as it would appear in a formal insurance policy document, answering the question below. Invent plausible specifics if needed — factual accuracy does not matter, only that it reads like the source document. Return ONLY the passage.`
+Never refuse, never ask for clarification, and never comment on the question. If you cannot tell what kind of document holds the answer, rewrite the question as plainly as possible. Return ONLY the rewritten query, nothing else.`
+
+	// HyDEPrompt embeds a hypothetical ANSWER rather than the question, on the
+	// premise that an answer shares more vocabulary with the passage holding it
+	// than the question does.
+	//
+	// It used to say "as it would appear in a formal insurance policy document".
+	// On a mixed corpus that instruction actively fought the query: asked which
+	// recipe uses coconut sugar, the model replied "insurance policy documents
+	// don't typically contain recipes" and offered to help differently — and
+	// that refusal is what got embedded. Where it did comply it invented the
+	// wrong register entirely, answering a question about red wine in a ragu
+	// with "culinary liability claims" and "coverage limits for food-related
+	// incidents".
+	//
+	// Scoring 2 of 9 against plain hybrid's 7 of 9, it was the worst arm
+	// measured — for a reason that had nothing to do with the technique.
+	HyDEPrompt = `Write a short passage (2-3 sentences) that plausibly ANSWERS the question below, in the style and register of whatever document would contain that answer. Invent plausible specifics: factual accuracy does not matter, only that the wording resembles the source.
+
+Never refuse, never ask for clarification, and never comment on the question. If you cannot tell what kind of document holds the answer, write a plain factual answer. Return ONLY the passage.`
 )
 
 // LLMRewriter sends the question to Claude with a fixed instruction.
